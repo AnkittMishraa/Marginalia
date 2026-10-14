@@ -75,7 +75,7 @@ async function saveProgress(){
    }
   }
   current.opened=Date.now();
-  current.status=current.progress>=.98?'finished':current.progress>0?'reading':'unread';
+  if(current.progress>=.98){current.status='finished'}else if(current.status!=='finished'){current.status=current.progress>0?'reading':'unread'}
   await db.updateBook(current);
   // Keep the in-memory entry aligned with the saved object, but don't redraw while the reader is scrolling.
   const idx=books.findIndex(b=>b.id===current.id);
