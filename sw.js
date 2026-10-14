@@ -1,24 +1,5 @@
-const V='marginalia-shell-v2',PFX='marginalia-shell-';
-const SHELL=['./','index.html','style.css','app.js','db.js','manifest.json','icon.svg','icon-192.png','icon-512.png'];
-// Caches hold app files only. IndexedDB (the library) is never touched here.
-self.addEventListener('install',e=>e.waitUntil(
- caches.open(V).then(c=>c.addAll(SHELL.map(u=>new Request(u,{cache:'reload'})))).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(
- caches.keys().then(k=>Promise.all(k.filter(x=>x.startsWith(PFX)&&x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
-// Network-first: online always gets fresh, consistent files; offline falls back to the last good copy.
-self.addEventListener('fetch',e=>{
- const r=e.request,u=new URL(r.url);
- if(r.method!=='GET'||u.origin!==location.origin)return;
- e.respondWith((async()=>{
-  try{
-   const res=await fetch(r,{cache:'no-cache'});
-   if(res.ok&&res.type==='basic'){const c=await caches.open(V);c.put(r,res.clone())}
-   return res;
-  }catch(err){
-   const hit=await caches.match(r,{ignoreSearch:true});
-   if(hit)return hit;
-   if(r.mode==='navigate'){const i=await caches.match('index.html');if(i)return i}
-   throw err; // never answer a script/style request with index.html
-  }
- })());
-});
+const V='marginalia-shell-v3',PFX='marginalia-shell-';
+const SHELL=['./','index.html','style.css','app.js','db.js','epub-engine.js','manifest.json','icon.svg','icon-192.png','icon-512.png','icon-maskable-512.png'];
+self.addEventListener('install',e=>e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL.map(u=>new Request(u,{cache:'reload'})))).then(()=>self.skipWaiting())));
+self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x.startsWith(PFX)&&x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
+self.addEventListener('fetch',e=>{const r=e.request,u=new URL(r.url);if(r.method!=='GET'||u.origin!==location.origin)return;e.respondWith((async()=>{try{const res=await fetch(r,{cache:'no-cache'});if(res.ok&&res.type==='basic'){const c=await caches.open(V);c.put(r,res.clone())}return res}catch(err){const hit=await caches.match(r,{ignoreSearch:true});if(hit)return hit;if(r.mode==='navigate'){const i=await caches.match('index.html');if(i)return i}throw err}})())});
