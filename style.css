@@ -271,3 +271,29 @@ header,.tools{background:#000!important}
 #dlgSet .backup-actions button:disabled{opacity:.55}
 #backupStatus{min-height:1.4em;font-size:.9rem;line-height:1.4}
 .backup-picker{display:block;width:100%;margin-top:8px;color:#aaa;font-size:.85rem}
+
+
+/* v1.3: keep Settings inside the visible viewport and scroll its contents cleanly */
+#dlgSet{
+  position:fixed;
+  top:max(12px, env(safe-area-inset-top));
+  bottom:max(12px, env(safe-area-inset-bottom));
+  left:0;right:0;
+  margin:auto;
+  width:min(92vw,440px);
+  height:auto;
+  max-height:none;
+  box-sizing:border-box;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+#dlgSet form{min-width:0;padding-bottom:4px}
+#dlgSet h3{position:sticky;top:-1px;z-index:3;background:#080808;padding:8px 0 10px;margin:0}
+#dlgSet .backup-tools,#dlgSet #log,#dlgSet .actions{min-width:0}
+#dlgSet .actions{padding-top:4px}
+@media(max-height:650px){
+  #dlgSet{top:6px;bottom:6px}
+  #dlgSet h3{padding-top:4px}
+}
