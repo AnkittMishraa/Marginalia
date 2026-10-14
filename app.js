@@ -85,7 +85,7 @@ async function saveProgress(){
 async function openBook(b){current=b;const rec=await db.getFile(b.id);if(!rec||!rec.blob){toast('The stored file is missing. Re-import the original file.');return}readerBlob=rec.blob;$('#readerTitle').textContent=b.title;$('#readerContent').replaceChildren();$('#readerTools').hidden=true;$('#appearancePanel').hidden=true;$('#readerMore').setAttribute('aria-expanded','false');$('#audioPanel').hidden=true;$('#readerContent').className='reader-content';readerOpen();
  try{
   if(b.kind==='audio'){openAudio(b,rec.blob);return}
-  if(b.format==='txt'){const text=await rec.blob.text();const pre=document.createElement('pre');pre.className='txt-body';pre.textContent=text;$('#readerContent').replaceChildren(pre);$('#readerContent').scrollTop=b.position||0;applyReaderStyle();return}
+  if(b.format==='txt'){const text=await rec.blob.text();const pre=document.createElement('pre');pre.className='txt-body';pre.textContent=text;$('#readerContent').replaceChildren(pre);applyReaderStyle();requestAnimationFrame(()=>{$('#readerContent').scrollTop=Number(b.position)||0});return}
   if(b.format==='pdf'){if(readerUrl)URL.revokeObjectURL(readerUrl);readerUrl=URL.createObjectURL(rec.blob);const frame=document.createElement('iframe');frame.id='pdfFrame';frame.title=b.title;frame.className='pdf-frame';frame.src=readerUrl;$('#readerContent').append(frame);return}
   if(b.format==='epub'){toast('Opening EPUB…',1800);const result=await readEpub(rec.blob);chapters=result.chapters;if(!b.author&&result.author){b.author=result.author;await db.updateBook(b)}chapterIndex=Math.min(Number(b.chapter)||0,Math.max(0,chapters.length-1));$('#readerTools').hidden=false;const sel=$('#chapterSelect');sel.replaceChildren();chapters.forEach((ch,i)=>{const o=document.createElement('option');o.value=i;o.textContent=ch.title||`Chapter ${i+1}`;sel.append(o)});showChapter(chapterIndex,true);return}
   toast('This file format is not supported by the reader.')
@@ -98,17 +98,23 @@ function showChapter(i,restore=false){
 }
 function openAudio(b,blob){const a=$('#audio');a.pause();if(readerUrl)URL.revokeObjectURL(readerUrl);readerUrl=URL.createObjectURL(blob);a.src=readerUrl;a.currentTime=Math.max(0,b.position||0);a.playbackRate=Number($('#speed').value)||1;$('#audioPanel').hidden=false;$('#readerContent').hidden=true;a.onloadedmetadata=()=>{if(b.position&&b.position<a.duration)a.currentTime=b.position};a.onerror=()=>toast('This audio file could not be played by this browser.',6000);a.play().catch(()=>toast('Tap Play in the audio controls to start listening.'));applyReaderStyle()}
 async function closeReader(){clearTimeout(saveTick);await saveProgress();const a=$('#audio');a.pause();a.removeAttribute('src');a.load();$('#dlgReader').close();document.body.classList.remove('reader-open');$('#readerContent').hidden=false;$('#audioPanel').hidden=true;$('#readerTools').hidden=true;if(readerUrl){URL.revokeObjectURL(readerUrl);readerUrl=null}chapters=[]}
-$('#readerBack').onclick=closeReader;$('#prevChapter').onclick=async()=>{await saveProgress();showChapter(chapterIndex-1)};$('#nextChapter').onclick=async()=>{await saveProgress();showChapter(chapterIndex+1)};$('#chapterSelect').onchange=e=>showChapter(Number(e.target.value));
+$('#readerBack').onclick=closeReader;$('#prevChapter').onclick=async()=>{await saveProgress();showChapter(chapterIndex-1)};$('#nextChapter').onclick=async()=>{await saveProgress();showChapter(chapterIndex+1)};$('#chapterSelect').onchange=async e=>{await saveProgress();showChapter(Number(e.target.value))};
 function changeFont(delta){fontSize=Math.max(14,Math.min(32,fontSize+delta));applyReaderStyle();db.setSetting('fontSize',fontSize).catch(e=>logErr('fontSize: '+e.message))}function changeTheme(){readerTheme=readerTheme==='dark'?'sepia':readerTheme==='sepia'?'light':'dark';applyReaderStyle();db.setSetting('readerTheme',readerTheme).catch(e=>logErr('readerTheme: '+e.message))}$('#readerMore').onclick=()=>{const p=$('#appearancePanel');p.hidden=!p.hidden;$('#readerMore').setAttribute('aria-expanded',String(!p.hidden));applyReaderStyle()};$('#appearanceDown').onclick=()=>changeFont(-1);$('#appearanceUp').onclick=()=>changeFont(1);$('#themeToggle').onclick=changeTheme;
 $('#bookmarkBtn').onclick=async()=>{if(!current)return;const marks=await db.getSetting('bookmarks',{});const key=current.id;const list=marks[key]||[];const pos=current.kind==='audio'?$('#audio').currentTime:$('#readerContent').scrollTop;list.push({position:pos,chapter:chapterIndex,label:`Bookmark ${list.length+1}`,created:Date.now()});marks[key]=list;await db.setSetting('bookmarks',marks);toast('Bookmark saved.')}
 $('#back15').onclick=()=>$('#audio').currentTime=Math.max(0,$('#audio').currentTime-15);$('#forward30').onclick=()=>$('#audio').currentTime=Math.min($('#audio').duration||Infinity,$('#audio').currentTime+30);$('#speed').onchange=e=>$('#audio').playbackRate=Number(e.target.value);$('#sleep').onchange=e=>{if(sleepTimer)clearTimeout(sleepTimer);const m=Number(e.target.value);if(m)sleepTimer=setTimeout(()=>{$('#audio').pause();toast('Sleep timer paused playback.')},m*60000)};
 $('#audio').ontimeupdate=()=>{if(current&&current.kind==='audio'){clearTimeout(saveTick);saveTick=setTimeout(saveProgress,5000)}};$('#audio').onended=()=>{if(current){current.progress=1;current.status='finished';db.updateBook(current).then(render)}};
-$('#readerContent').addEventListener('scroll',()=>{
- if(!current||current.kind!=='ebook'||current.format==='pdf')return;
- // Save after scrolling settles; closeReader/pagehide also force a final save.
+function scheduleProgressSave(){
+ if(!current||current.format==='pdf'||current.kind==='audio')return;
  clearTimeout(saveTick);
- saveTick=setTimeout(async()=>{await saveProgress();render()},700);
-},{passive:true});
+ saveTick=setTimeout(async()=>{
+  await saveProgress();
+  render();
+ },900);
+}
+const readingSurface=$('#readerContent');
+readingSurface.addEventListener('scroll',scheduleProgressSave,{passive:true});
+readingSurface.addEventListener('touchend',scheduleProgressSave,{passive:true});
+readingSurface.addEventListener('pointerup',scheduleProgressSave,{passive:true});
 $('#btnSettings').onclick=async()=>{let s='Storage usage unavailable.';try{const e=await navigator.storage.estimate();s=`Using ${mb(e.usage)} of about ${mb(e.quota)} available.`;if(navigator.storage.persisted)s+=(await navigator.storage.persisted())?' Persistent storage: granted.':' Persistent storage: not granted.'}catch{}$('#store').textContent=s;$('#log').textContent=JSON.parse(localStorage.getItem(LOGK)||'[]').join('\n')||'No errors logged.';$('#dlgSet').showModal()};
 $('#clrLog').onclick=()=>localStorage.removeItem(LOGK);$('#fab').onclick=()=>$('#picker').click();$('#picker').onchange=e=>{const f=[...e.target.files];e.target.value='';if(f.length)importFiles(f)};let st;$('#q').oninput=()=>{clearTimeout(st);st=setTimeout(render,120)};$('#sort').onchange=()=>{render();db.setSetting('sort',$('#sort').value).catch(e=>logErr(e.message))};
 addEventListener('pagehide',()=>{clearTimeout(saveTick);if(current)saveProgress()});
