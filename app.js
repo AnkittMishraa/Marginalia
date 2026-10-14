@@ -18,7 +18,31 @@ async function importFiles(files){const out=[];let ok=0;let free=Infinity;try{co
  render();toast((ok?`Added ${ok} file${ok>1?'s':''}. `:'')+out.join('\n'),out.length?9000:3500)}
 function visible(){const q=$('#q').value.trim().toLowerCase(),s=$('#sort').value;let l=books.filter(b=>{if(filter==='reading'&&!(b.progress>0&&b.progress<1&&b.status!=='finished'))return false;if(filter==='finished'&&b.status!=='finished')return false;if(filter==='audio'&&b.kind!=='audio')return false;return !q||[b.title,b.author,b.series,(b.tags||[]).join(' ')].join(' ').toLowerCase().includes(q)});const cmp={added:(a,b)=>b.added-a.added,opened:(a,b)=>b.opened-a.opened,title:(a,b)=>a.title.localeCompare(b.title),author:(a,b)=>(a.author||'~').localeCompare(b.author||'~'),progress:(a,b)=>b.progress-a.progress}[s];return l.sort(cmp)}
 function render(){const g=$('#grid');g.replaceChildren();const l=visible(),e=$('#empty');e.hidden=l.length>0;if(!l.length){e.querySelector('h2').textContent=books.length?'Nothing matches':'Your reading room is empty';e.querySelector('p').textContent=books.length?'Try a different search or filter.':'Tap the gold button to add an EPUB, PDF, TXT or audio file from your phone.'}
- for(const b of l){const wrap=document.createElement('article');wrap.className='book-wrap';const c=document.createElement('button');c.className='card';c.setAttribute('aria-label',`Open ${b.title}`);const cv=document.createElement('div');cv.className='cover';const t=document.createElement('span');t.textContent=b.title;const k=document.createElement('small');k.textContent=b.format;cv.append(t,k);const tt=document.createElement('div');tt.className='t';tt.textContent=b.title;const a=document.createElement('div');a.className='a';a.textContent=b.author||'Unknown author';const bar=document.createElement('div');bar.className='bar';const i=document.createElement('i');i.style.width=Math.round(b.progress*100)+'%';bar.append(i);c.append(cv,tt,a,bar);c.onclick=()=>openBook(b);const edit=document.createElement('button');edit.className='edit-link';edit.textContent='Edit details';edit.onclick=()=>editBook(b);wrap.append(c,edit);g.append(wrap)}}
+ for(const b of l){
+  const wrap=document.createElement('article');wrap.className='book-wrap';
+  const c=document.createElement('button');c.className='card';c.type='button';c.setAttribute('aria-label',`Open ${b.title}`);
+  const cv=document.createElement('div');cv.className='cover';cv.setAttribute('aria-hidden','true');
+  const monogram=document.createElement('span');monogram.className='cover-monogram';monogram.textContent=(b.title||'M').trim().charAt(0).toUpperCase();
+  const t=document.createElement('span');t.className='cover-title';t.textContent=b.title;
+  const k=document.createElement('small');k.textContent=b.format;
+  cv.append(monogram,t,k);
+  const details=document.createElement('div');details.className='book-details';
+  const tt=document.createElement('div');tt.className='t';tt.textContent=b.title;
+  const a=document.createElement('div');a.className='a';a.textContent=b.author||'Unknown author';
+  const bar=document.createElement('div');bar.className='bar';const i=document.createElement('i');i.style.width=Math.round(b.progress*100)+'%';bar.append(i);
+  details.append(tt,a,bar);c.append(cv,details);c.onclick=()=>openBook(b);
+  const actions=document.createElement('div');actions.className='book-actions';
+  const progress=document.createElement('span');progress.className='book-progress';progress.textContent=b.kind==='audio'?(b.progress>0?`${Math.round(b.progress*100)}% listened`:'Audiobook'):(b.progress>0?`${Math.round(b.progress*100)}% read`:b.format.toUpperCase());
+  const menuWrap=document.createElement('div');menuWrap.className='book-menu-wrap';
+  const menuBtn=document.createElement('button');menuBtn.type='button';menuBtn.className='book-menu-trigger';menuBtn.textContent='⋯';menuBtn.setAttribute('aria-label',`Actions for ${b.title}`);menuBtn.setAttribute('aria-expanded','false');
+  const menu=document.createElement('div');menu.className='book-menu';menu.hidden=true;
+  const edit=document.createElement('button');edit.type='button';edit.textContent='Edit details';edit.onclick=()=>{closeBookMenus();editBook(b)};
+  const remove=document.createElement('button');remove.type='button';remove.className='menu-danger';remove.textContent='Remove from library';remove.onclick=async()=>{closeBookMenus();if(!confirm(`Remove “${b.title}” and its stored file from Marginalia?`))return;try{await db.removeBook(b.id);books=books.filter(x=>x.id!==b.id);render();toast('Book removed from your library.')}catch(err){logErr('remove '+b.title+': '+err.message);toast('Could not remove this book.')}};
+  menu.append(edit,remove);menuBtn.onclick=(ev)=>{ev.stopPropagation();const opening=menu.hidden;closeBookMenus();menu.hidden=!opening;menuBtn.setAttribute('aria-expanded',String(opening))};
+  menuWrap.append(menuBtn,menu);actions.append(progress,menuWrap);wrap.append(c,actions);g.append(wrap)
+ }} 
+function closeBookMenus(){document.querySelectorAll('.book-menu').forEach(m=>m.hidden=true);document.querySelectorAll('.book-menu-trigger').forEach(b=>b.setAttribute('aria-expanded','false'))}
+document.addEventListener('click',e=>{if(!e.target.closest('.book-menu-wrap'))closeBookMenus()});
 function renderFilters(){const f=$('#filters');f.replaceChildren();for(const[k,l]of FILTERS){const b=document.createElement('button');b.textContent=l;b.setAttribute('role','tab');b.setAttribute('aria-selected',k===filter);b.onclick=()=>{filter=k;renderFilters();render();db.setSetting('filter',k).catch(e=>logErr('filter: '+e.message))};f.append(b)}}
 function editBook(b){current=b;$('#bTitle').textContent=b.title;$('#bInfo').textContent=`${b.format.toUpperCase()} · ${mb(b.size)} · ${Math.round(b.progress*100)}% complete`;$('#eTitle').value=b.title;$('#eAuthor').value=b.author||'';$('#dlgBook').showModal()}
 $('#fBook').addEventListener('submit',async e=>{const v=e.submitter&&e.submitter.value;if(!current)return;try{if(v==='save'){current.title=$('#eTitle').value.trim()||current.title;current.author=$('#eAuthor').value.trim();await db.updateBook(current)}if(v==='x'){if(!confirm(`Permanently remove "${current.title}" and its stored file?`)){e.preventDefault();return}await db.removeBook(current.id);books=books.filter(b=>b.id!==current.id)}render()}catch(err){logErr(err.message);toast('Could not save that change.')}});
