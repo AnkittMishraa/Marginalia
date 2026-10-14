@@ -192,3 +192,52 @@ header,.tools{background:#000!important}
 .appearance-panel #appearanceTheme{width:100%}
 #dlgBook{background:#090909;color:#eee;border-color:#333;max-height:85dvh;overflow:auto}
 #dlgBook input[type=file]{display:block;width:100%;max-width:100%;padding:10px 0;color:#ccc}
+
+/* v0.7: keep reader actions above Brave's bottom browser controls */
+#dlgReader.reader-dialog{
+  position:fixed!important;
+  top:env(safe-area-inset-top, 0px)!important;
+  right:0!important;
+  bottom:calc(82px + env(safe-area-inset-bottom, 0px))!important;
+  left:0!important;
+  width:100vw!important;
+  height:auto!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:0 0 0!important;
+  overflow:hidden!important;
+  display:none;
+  flex-direction:column;
+  background:#000!important;
+}
+#dlgReader.reader-dialog[open]{display:flex!important}
+#dlgReader .reader-head{flex:0 0 auto!important}
+#dlgReader .reader-tools{flex:0 0 auto!important}
+#dlgReader .reader-content{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;padding-bottom:16px}
+#dlgReader #audioPanel{flex:1 1 auto!important;min-height:0!important;overflow:auto!important}
+#dlgReader .reader-bottom{
+  position:relative!important;
+  z-index:5!important;
+  flex:0 0 auto!important;
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  justify-content:space-around!important;
+  align-items:center!important;
+  gap:6px!important;
+  padding:8px 12px calc(8px + env(safe-area-inset-bottom, 0px))!important;
+  background:#050505!important;
+  border-top:1px solid #292929!important;
+}
+#dlgReader .reader-bottom button{
+  flex:1 1 0!important;
+  min-width:0!important;
+  min-height:42px!important;
+  padding:8px 5px!important;
+  white-space:nowrap!important;
+  font-size:.9rem!important;
+  border:1px solid #303030!important;
+  border-radius:12px!important;
+  background:#141414!important;
+  color:#ddd!important;
+}
+#dlgReader .reader-bottom #bookmarkBtn{font-size:.84rem!important}
