@@ -241,3 +241,12 @@ header,.tools{background:#000!important}
   color:#ddd!important;
 }
 #dlgReader .reader-bottom #bookmarkBtn{font-size:.84rem!important}
+
+/* v0.8: all reader actions live inside the Aa panel; reclaim reading space */
+#dlgReader .reader-bottom{display:none!important}
+#dlgReader .appearance-panel{flex:0 0 auto;padding:12px 14px;background:#080808;border-bottom:1px solid #292929}
+#dlgReader .appearance-controls{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:0 0 10px}
+#dlgReader .appearance-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#dlgReader .appearance-panel button{min-height:42px;border:1px solid #303030;border-radius:10px;background:#151515;color:#ddd;padding:8px 12px}
+#dlgReader .appearance-panel #themeToggle,#dlgReader .appearance-panel #bookmarkBtn{width:100%;font-size:1rem}
+#dlgReader .appearance-panel[hidden]{display:none!important}
