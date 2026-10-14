@@ -250,3 +250,15 @@ header,.tools{background:#000!important}
 #dlgReader .appearance-panel button{min-height:42px;border:1px solid #303030;border-radius:10px;background:#151515;color:#ddd;padding:8px 12px}
 #dlgReader .appearance-panel #themeToggle,#dlgReader .appearance-panel #bookmarkBtn{width:100%;font-size:1rem}
 #dlgReader .appearance-panel[hidden]{display:none!important}
+
+/* Backup and restore */
+.backup-tools{border:1px solid #292929;border-radius:12px;padding:12px;margin:16px 0;background:#050505}
+.backup-tools h4{margin:0 0 8px}
+.backup-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.backup-actions button{min-height:44px;padding:10px;border:1px solid #333;border-radius:10px;background:#171717;color:#eee}
+#backupStatus{white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:0}
+#dlgSet{background:#080808;color:#eee;border:1px solid #333;border-radius:14px;width:min(92vw,440px);max-height:85dvh;overflow:auto}
+#dlgSet form{display:flex;flex-direction:column;gap:8px}
+#dlgSet h3,#dlgSet h4{margin:8px 0}
+#dlgSet .actions{display:flex;gap:8px}
+#dlgSet .actions button{flex:1;min-height:42px}
