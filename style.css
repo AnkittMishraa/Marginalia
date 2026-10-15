@@ -370,3 +370,28 @@ header,.tools{background:#000!important}
   padding:16px 20px 28px!important;
   overflow-y:auto!important;
 }
+
+/* v2.0 compact reading chrome */
+#dlgReader .reader-head{
+  padding:4px 10px!important;
+  gap:7px!important;
+  min-height:0!important;
+}
+#dlgReader .reader-head .back-arrow{
+  width:34px!important;min-width:34px!important;height:34px!important;min-height:34px!important;
+  padding:4px!important;border-radius:8px!important;font-size:1.1rem!important;
+}
+#dlgReader .reader-head #readerMore{
+  width:36px!important;min-width:36px!important;height:36px!important;min-height:36px!important;
+  padding:4px!important;border-radius:8px!important;font-size:.9rem!important;
+}
+#dlgReader .reader-title{font-size:.96rem!important}
+#dlgReader .reader-tools{
+  padding:4px 8px!important;gap:5px!important;
+}
+#dlgReader .reader-tools button,
+#dlgReader .reader-tools select{
+  min-height:30px!important;height:30px!important;padding:3px 8px!important;
+  border-radius:7px!important;font-size:.78rem!important;
+}
+#dlgReader .reader-tools select{min-width:0!important}
