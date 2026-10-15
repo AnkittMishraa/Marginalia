@@ -442,3 +442,35 @@ header,.tools{background:#000!important}
 #dlgReader.reader-dialog.chrome-hidden #readerContent{
   padding-top:20px!important;
 }
+
+/* v2.3 clean, legible on-demand controls */
+#dlgReader.reader-dialog{background:#000!important;color:#eee!important}
+#dlgReader .reader-head{
+ top:0!important;padding:8px 12px!important;min-height:48px!important;
+ display:flex!important;align-items:center!important;gap:12px!important;
+ background:#111!important;border-bottom:1px solid #292929!important;
+}
+#dlgReader .reader-head .back-arrow,#dlgReader .reader-head #readerMore{
+ flex:0 0 36px!important;width:36px!important;min-width:36px!important;height:36px!important;min-height:36px!important;
+ color:#ddd!important;font-size:18px!important;border:0!important;background:transparent!important;
+}
+#dlgReader .reader-title{font-size:16px!important;line-height:1.2!important;color:#ddd!important}
+#dlgReader .reader-tools{
+ top:52px!important;padding:6px 12px!important;gap:8px!important;
+ background:#111!important;border-bottom:1px solid #292929!important;
+}
+#dlgReader .reader-tools button{
+ flex:0 0 36px!important;width:36px!important;min-width:36px!important;height:36px!important;
+ border:0!important;background:transparent!important;color:#ddd!important;font-size:22px!important;
+}
+#dlgReader .reader-tools select{
+ height:36px!important;min-height:36px!important;padding:4px 8px!important;
+ background:#191919!important;color:#ddd!important;border:1px solid #333!important;
+ border-radius:6px!important;font-size:13px!important;
+}
+#dlgReader:not(.chrome-hidden) .reader-content{padding-top:110px!important}
+#dlgReader.chrome-hidden .reader-content{padding-top:16px!important}
+#dlgReader .appearance-panel{
+ top:52px!important;left:12px!important;right:12px!important;
+ background:#111!important;color:#ddd!important;border-color:#333!important;
+}
