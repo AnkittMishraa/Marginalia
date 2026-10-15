@@ -50,8 +50,14 @@ function renderFilters(){const f=$('#filters');f.replaceChildren();for(const[k,l
 function editBook(b){current=b;$('#bTitle').textContent=b.title;$('#bInfo').textContent=`${b.format.toUpperCase()} · ${mb(b.size)} · ${Math.round(b.progress*100)}% complete`;$('#eTitle').value=b.title;$('#eAuthor').value=b.author||'';$('#eCover').value='';$('#coverHint').textContent=b.coverBlob?'A custom cover is saved. Choose another image to replace it.':'Optional. Choose a JPG, PNG, or WebP image from your phone.';$('#dlgBook').showModal()}
 $('#fBook').addEventListener('submit',async e=>{e.preventDefault();const v=e.submitter&&e.submitter.value;if(!current)return;try{if(v==='save'){const title=$('#eTitle').value.trim()||current.title;const author=$('#eAuthor').value.trim();const coverFile=$('#eCover').files&&$('#eCover').files[0];if(coverFile&&!coverFile.type.startsWith('image/')){toast('Choose an image file for the cover.');return}if(coverFile&&coverFile.size>8*1024*1024){toast('Cover image must be 8 MB or smaller.');return}current.title=title;current.author=author;if(coverFile)current.coverBlob=coverFile;await db.updateBook(current);$('#dlgBook').close();render();toast('Book details saved.')}else if(v==='x'){if(!confirm(`Permanently remove "${current.title}" and its stored file?`))return;await db.removeBook(current.id);books=books.filter(b=>b.id!==current.id);$('#dlgBook').close();render()}else $('#dlgBook').close()}catch(err){logErr(err.message);toast('Could not save that change: '+err.message)}});
 function readerOpen(){if(!$('body').classList.contains('reader-open'))document.body.classList.add('reader-open');$('#dlgReader').showModal();startStatsTicker()}
-function cleanChapter(html){const doc=new DOMParser().parseFromString(html,'text/html');doc.querySelectorAll('script,style,iframe,object,embed,form,link').forEach(n=>n.remove());doc.querySelectorAll('*').forEach(n=>{[...n.attributes].forEach(a=>{if(/^on/i.test(a.name)||a.name==='srcdoc')n.removeAttribute(a.name);if((a.name==='href'||a.name==='src')&&/^\s*javascript:/i.test(a.value))n.removeAttribute(a.name)})});return doc.body.innerHTML}
-function applyReaderStyle(){const c=$('#readerContent');c.style.fontSize=fontSize+'px';c.dataset.theme=readerTheme;$('#themeToggle').textContent=readerTheme==='dark'?'Sepia':readerTheme==='sepia'?'Light':'Dark';const p=$('#appearanceSize');if(p)p.textContent=fontSize+' px'}
+function cleanChapter(html){const doc=new DOMParser().parseFromString(html,'text/html');doc.querySelectorAll('script,style,iframe,object,embed,form,link').forEach(n=>n.remove());doc.querySelectorAll('*').forEach(n=>{[...n.attributes].forEach(a=>{if(/^on/i.test(a.name)||a.name==='srcdoc'||a.name==='style'||a.name==='color'||a.name==='bgcolor')n.removeAttribute(a.name);if((a.name==='href'||a.name==='src')&&/^\s*javascript:/i.test(a.value))n.removeAttribute(a.name)})});return doc.body.innerHTML}
+function applyReaderStyle(){const d=$('#dlgReader'),c=$('#readerContent'),t=THEMES[readerTheme]||THEMES.dark,st=d.style;
+ d.dataset.theme=readerTheme;st.setProperty('--rbg',t.bg);st.setProperty('--rtx',t.tx);st.setProperty('--rmu',t.mu);st.setProperty('--rbar',t.bar);st.setProperty('--rm',readerMargin+'px');
+ c.style.fontSize=fontSize+'px';c.style.lineHeight=String(readerLh);c.style.fontFamily=FONTS[readerFont]||FONTS.serif;c.dataset.theme=readerTheme;
+ const o=(id,v)=>{const e=$(id);if(e)e.textContent=v};o('#oSize',Math.round(fontSize/19*100)+'%');o('#oLh',Math.round(readerLh/1.7*100)+'%');o('#oMargin',readerMargin+' px');
+ document.querySelectorAll('#aaPop [data-font]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.font===readerFont)));
+ document.querySelectorAll('#aaPop [data-theme]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.theme===readerTheme)));
+ setTimeout(updateScrub,300)}
 async function saveProgress(){
  if(!current)return;
  try{
@@ -82,25 +88,71 @@ async function saveProgress(){
   if(idx>=0)books[idx]=current;
  }catch(e){logErr('progress: '+e.message)}
 }
-async function openBook(b){current=b;const rec=await db.getFile(b.id);if(!rec||!rec.blob){toast('The stored file is missing. Re-import the original file.');return}readerBlob=rec.blob;$('#readerTitle').textContent=b.title;$('#readerContent').replaceChildren();$('#readerTools').hidden=true;$('#appearancePanel').hidden=true;$('#readerMore').setAttribute('aria-expanded','false');$('#audioPanel').hidden=true;$('#readerContent').className='reader-content';$('#dlgReader').classList.add('chrome-hidden');readerOpen();
+async function openBook(b){current=b;const rec=await db.getFile(b.id);if(!rec||!rec.blob){toast('The stored file is missing. Re-import the original file.');return}readerBlob=rec.blob;$('#readerTitle').textContent=b.title;$('#readerContent').replaceChildren();closePops();$('#dlgReader').dataset.mode=(b.format==='epub'||b.format==='txt')?'text':'other';$('#dlgReader').dataset.fmt=b.format;$('#rStatus').textContent='';$('#audioPanel').hidden=true;$('#readerContent').className='reader-content';$('#dlgReader').classList.add('chrome-hidden');readerOpen();
  try{
   if(b.kind==='audio'){openAudio(b,rec.blob);return}
   if(b.format==='txt'){const text=await rec.blob.text();const pre=document.createElement('pre');pre.className='txt-body';pre.textContent=text;$('#readerContent').replaceChildren(pre);applyReaderStyle();requestAnimationFrame(()=>{$('#readerContent').scrollTop=Number(b.position)||0});return}
   if(b.format==='pdf'){if(readerUrl)URL.revokeObjectURL(readerUrl);readerUrl=URL.createObjectURL(rec.blob);const frame=document.createElement('iframe');frame.id='pdfFrame';frame.title=b.title;frame.className='pdf-frame';frame.src=readerUrl;$('#readerContent').append(frame);return}
-  if(b.format==='epub'){toast('Opening EPUB…',1800);const result=await readEpub(rec.blob);chapters=result.chapters;if(!b.author&&result.author){b.author=result.author;await db.updateBook(b)}chapterIndex=Math.min(Number(b.chapter)||0,Math.max(0,chapters.length-1));$('#readerTools').hidden=false;const sel=$('#chapterSelect');sel.replaceChildren();chapters.forEach((ch,i)=>{const o=document.createElement('option');o.value=i;o.textContent=ch.title||`Chapter ${i+1}`;sel.append(o)});showChapter(chapterIndex,true);return}
+  if(b.format==='epub'){toast('Opening EPUB…',1800);const result=await readEpub(rec.blob);chapters=result.chapters;if(!b.author&&result.author){b.author=result.author;await db.updateBook(b)}chapterIndex=Math.min(Number(b.chapter)||0,Math.max(0,chapters.length-1));showChapter(chapterIndex,true);return}
   toast('This file format is not supported by the reader.')
  }catch(e){logErr('open '+b.title+': '+e.message);$('#readerContent').textContent='Could not open this file. '+e.message;toast('Could not open file: '+e.message,7000)}}
-function showChapter(i,restore=false){
+function showChapter(i,restore=false){setTimeout(updateScrub,250);
  chapterIndex=Math.max(0,Math.min(i,chapters.length-1));const ch=chapters[chapterIndex];if(!ch)return;
- $('#chapterSelect').value=String(chapterIndex);const c=$('#readerContent');c.innerHTML=cleanChapter(ch.content);c.scrollTop=0;applyReaderStyle();
+ const c=$('#readerContent');c.innerHTML=cleanChapter(ch.content);c.scrollTop=0;applyReaderStyle();
  if(current){current.chapter=chapterIndex;if(!restore){current.position=0;current.progress=Math.min(.999,chapterIndex/Math.max(1,chapters.length))}db.updateBook(current).then(render).catch(e=>logErr(e.message))}
  if(restore&&current){requestAnimationFrame(()=>requestAnimationFrame(()=>{const max=Math.max(0,c.scrollHeight-c.clientHeight);const fraction=Math.max(0,Math.min(1,(current.progress||0)*chapters.length-chapterIndex));c.scrollTop=Math.max(0,Math.min(max,Number(current.position)||max*fraction))}))}
 }
 function openAudio(b,blob){const a=$('#audio');a.pause();if(readerUrl)URL.revokeObjectURL(readerUrl);readerUrl=URL.createObjectURL(blob);a.src=readerUrl;a.currentTime=Math.max(0,b.position||0);a.playbackRate=Number($('#speed').value)||1;$('#audioPanel').hidden=false;$('#readerContent').hidden=true;a.onloadedmetadata=()=>{if(b.position&&b.position<a.duration)a.currentTime=b.position};a.onerror=()=>toast('This audio file could not be played by this browser.',6000);a.play().catch(()=>toast('Tap Play in the audio controls to start listening.'));applyReaderStyle()}
-async function closeReader(){stopStatsTicker();clearTimeout(saveTick);await saveProgress();const a=$('#audio');a.pause();a.removeAttribute('src');a.load();$('#dlgReader').close();document.body.classList.remove('reader-open');$('#readerContent').hidden=false;$('#audioPanel').hidden=true;$('#readerTools').hidden=true;if(readerUrl){URL.revokeObjectURL(readerUrl);readerUrl=null}chapters=[]}
-$('#readerBack').onclick=closeReader;$('#prevChapter').onclick=async()=>{await saveProgress();showChapter(chapterIndex-1)};$('#nextChapter').onclick=async()=>{await saveProgress();showChapter(chapterIndex+1)};$('#chapterSelect').onchange=async e=>{await saveProgress();showChapter(Number(e.target.value))};
-function changeFont(delta){fontSize=Math.max(14,Math.min(32,fontSize+delta));applyReaderStyle();db.setSetting('fontSize',fontSize).catch(e=>logErr('fontSize: '+e.message))}function changeTheme(){readerTheme=readerTheme==='dark'?'sepia':readerTheme==='sepia'?'light':'dark';applyReaderStyle();db.setSetting('readerTheme',readerTheme).catch(e=>logErr('readerTheme: '+e.message))}$('#readerMore').onclick=()=>{const p=$('#appearancePanel');p.hidden=!p.hidden;$('#readerMore').setAttribute('aria-expanded',String(!p.hidden));applyReaderStyle()};$('#appearanceDown').onclick=()=>changeFont(-1);$('#appearanceUp').onclick=()=>changeFont(1);$('#themeToggle').onclick=changeTheme;
-$('#bookmarkBtn').onclick=async()=>{if(!current)return;const marks=await db.getSetting('bookmarks',{});const key=current.id;const list=marks[key]||[];const pos=current.kind==='audio'?$('#audio').currentTime:$('#readerContent').scrollTop;list.push({position:pos,chapter:chapterIndex,label:`Bookmark ${list.length+1}`,created:Date.now()});marks[key]=list;await db.setSetting('bookmarks',marks);toast('Bookmark saved.')}
+async function closeReader(){stopStatsTicker();clearTimeout(saveTick);await saveProgress();const a=$('#audio');a.pause();a.removeAttribute('src');a.load();$('#dlgReader').close();document.body.classList.remove('reader-open');$('#readerContent').hidden=false;$('#audioPanel').hidden=true;closePops();if(readerUrl){URL.revokeObjectURL(readerUrl);readerUrl=null}chapters=[]}
+$('#readerBack').onclick=closeReader;$('#prevChapter').onclick=async()=>{await saveProgress();showChapter(chapterIndex-1)};$('#nextChapter').onclick=async()=>{await saveProgress();showChapter(chapterIndex+1)};
+// ---- v2.4 reader chrome: popovers, scrubber, contents & bookmarks ----
+const FONTS={serif:"Georgia,'Times New Roman',serif",sans:"system-ui,-apple-system,Roboto,sans-serif"};
+const THEMES={dark:{bg:'#000000',tx:'#d9d5cc',mu:'#8f8a80',bar:'#0b0b0af2'},sepia:{bg:'#f1e7d0',tx:'#3b2f20',mu:'#7a6a52',bar:'#e8dcc0f2'},light:{bg:'#fafaf7',tx:'#1a1a18',mu:'#6b675f',bar:'#efefe9f2'}};
+const PREF_KEYS={size:'fontSize',lh:'readerLh',margin:'readerMargin',font:'readerFont',theme:'readerTheme'};
+let readerFont='serif',readerLh=1.7,readerMargin=22,scrubbing=false;
+function cleanPrefs(){fontSize=Math.max(14,Math.min(32,Math.round(Number(fontSize))||19));readerLh=Math.round(Math.max(1.3,Math.min(2.2,Number(readerLh)||1.7))*10)/10;readerMargin=Math.max(6,Math.min(54,Math.round(Number(readerMargin))||22));if(!FONTS[readerFont])readerFont='serif';if(!THEMES[readerTheme])readerTheme='dark'}
+function setPref(k,v){const c=$('#readerContent'),f=c.scrollTop/Math.max(1,c.scrollHeight-c.clientHeight);
+ if(k==='size')fontSize=v;else if(k==='lh')readerLh=v;else if(k==='margin')readerMargin=v;else if(k==='font')readerFont=v;else if(k==='theme')readerTheme=v;
+ cleanPrefs();applyReaderStyle();requestAnimationFrame(()=>{c.scrollTop=f*Math.max(0,c.scrollHeight-c.clientHeight)});
+ db.setSetting(PREF_KEYS[k],{size:fontSize,lh:readerLh,margin:readerMargin,font:readerFont,theme:readerTheme}[k]).catch(e=>logErr(PREF_KEYS[k]+': '+e.message))}
+function closePops(){for(const s of['#aaPop','#rMenu']){const e=$(s);if(e)e.hidden=true}$('#readerMore').setAttribute('aria-expanded','false');$('#readerMenu').setAttribute('aria-expanded','false')}
+function togglePop(sel,btn){const e=$(sel),open=e.hidden;closePops();e.hidden=!open;$(btn).setAttribute('aria-expanded',String(open));if(open)applyReaderStyle()}
+$('#readerMore').onclick=e=>{e.stopPropagation();togglePop('#aaPop','#readerMore')};
+$('#readerMenu').onclick=e=>{e.stopPropagation();togglePop('#rMenu','#readerMenu')};
+$('#aaPop').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+ if(d.tab){$('#paneText').hidden=d.tab!=='text';$('#paneTheme').hidden=d.tab!=='theme';document.querySelectorAll('#aaPop [data-tab]').forEach(t=>t.setAttribute('aria-selected',String(t===b)))}
+ else if(d.pref)setPref(d.pref,+(({size:fontSize,lh:readerLh,margin:readerMargin})[d.pref]+ +d.d).toFixed(1));
+ else if(d.font)setPref('font',d.font);else if(d.theme)setPref('theme',d.theme)});
+// A tap outside an open popover only closes it (it does not also toggle the controls).
+$('#dlgReader').addEventListener('click',e=>{if((!$('#aaPop').hidden||!$('#rMenu').hidden)&&!e.target.closest('.rpop,#readerMore,#readerMenu')){closePops();e.stopPropagation()}},true);
+$('#rMenu').addEventListener('click',e=>{if(e.target.closest('button'))setTimeout(closePops,0)});
+function textProgress(){const c=$('#readerContent'),f=Math.min(1,Math.max(0,c.scrollTop/Math.max(1,c.scrollHeight-c.clientHeight)));return current&&current.format==='epub'&&chapters.length?(chapterIndex+f)/chapters.length:f}
+function chapterName(){const c=chapters[chapterIndex];return c?(c.title||`Chapter ${chapterIndex+1}`):''}
+function bmLabel(){if(current&&current.kind==='audio'){const t=Math.floor($('#audio').currentTime||0);return `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`}return(current&&current.format==='epub'&&chapters.length?chapterName()+' · ':'')+Math.round(textProgress()*100)+'%'}
+function updateScrub(){const d=$('#dlgReader');if(scrubbing||!current||!d.open||d.dataset.mode!=='text')return;const p=textProgress();$('#scrub').value=Math.round(p*1000);$('#rPos').textContent=Math.round(p*100)+'%';$('#rStatus').textContent=current.format==='epub'&&chapters.length?`${chapterName()} · ${chapterIndex+1} of ${chapters.length}`:''}
+$('#readerContent').addEventListener('scroll',()=>requestAnimationFrame(updateScrub),{passive:true});
+$('#scrub').addEventListener('input',()=>{scrubbing=true;$('#rPos').textContent=Math.round($('#scrub').value/10)+'%'});
+$('#scrub').addEventListener('change',async()=>{const p=$('#scrub').value/1000;scrubbing=false;if(!current)return;
+ if(current.format==='epub'&&chapters.length){const i=Math.min(chapters.length-1,Math.floor(p*chapters.length));await saveProgress();current.progress=Math.min(.999,p);current.position=0;showChapter(i,true)}
+ else{const c=$('#readerContent');c.scrollTop=p*Math.max(0,c.scrollHeight-c.clientHeight)}
+ setTimeout(updateScrub,200)});
+async function renderToc(tab){const L=$('#tocList');L.replaceChildren();
+ const note=m=>{const p=document.createElement('p');p.className='muted';p.style.padding='16px 20px';p.textContent=m;L.append(p)};
+ $('#tabToc').setAttribute('aria-selected',String(tab==='toc'));$('#tabBm').setAttribute('aria-selected',String(tab==='bm'));if(!current)return;
+ if(tab==='toc'){if(!chapters.length)return note('This file has no chapters.');
+  chapters.forEach((ch,i)=>{const b=document.createElement('button');b.className='li'+(i===chapterIndex?' on':'');b.textContent=ch.title||`Chapter ${i+1}`;b.onclick=async()=>{$('#dlgToc').close();await saveProgress();showChapter(i)};L.append(b)});return}
+ const marks=await db.getSetting('bookmarks',{}),list=marks[current.id]||[];
+ if(!list.length)return note('No bookmarks yet. Open ⋮ and choose Add bookmark.');
+ list.forEach((m,i)=>{const row=document.createElement('div');row.className='bmrow';
+  const b=document.createElement('button');b.className='li';b.textContent=m.label||`Bookmark ${i+1}`;
+  b.onclick=()=>{$('#dlgToc').close();if(current.kind==='audio'){$('#audio').currentTime=Number(m.position)||0}else if(current.format==='epub'&&chapters.length){current.position=Number(m.position)||0;showChapter(Number(m.chapter)||0,true)}else $('#readerContent').scrollTop=Number(m.position)||0};
+  const d=document.createElement('button');d.className='del';d.textContent='✕';d.setAttribute('aria-label','Delete bookmark');
+  d.onclick=async()=>{list.splice(i,1);marks[current.id]=list;try{await db.setSetting('bookmarks',marks)}catch(e){logErr('bookmarks: '+e.message)}renderToc('bm')};
+  row.append(b,d);L.append(row)})}
+function openToc(){renderToc($('#dlgReader').dataset.mode==='text'&&chapters.length?'toc':'bm');$('#tabToc').hidden=!chapters.length;$('#dlgToc').showModal()}
+$('#rToc').onclick=openToc;$('#menuToc').onclick=openToc;$('#tabToc').onclick=()=>renderToc('toc');$('#tabBm').onclick=()=>renderToc('bm');
+$('#dlgToc').addEventListener('click',e=>{if(e.target===$('#dlgToc'))$('#dlgToc').close()});
+$('#bookmarkBtn').onclick=async()=>{if(!current)return;const marks=await db.getSetting('bookmarks',{});const key=current.id;const list=marks[key]||[];const pos=current.kind==='audio'?$('#audio').currentTime:$('#readerContent').scrollTop;list.push({position:pos,chapter:chapterIndex,label:bmLabel(),created:Date.now()});marks[key]=list;await db.setSetting('bookmarks',marks);toast('Bookmark saved.')}
 $('#back15').onclick=()=>$('#audio').currentTime=Math.max(0,$('#audio').currentTime-15);$('#forward30').onclick=()=>$('#audio').currentTime=Math.min($('#audio').duration||Infinity,$('#audio').currentTime+30);$('#speed').onchange=e=>$('#audio').playbackRate=Number(e.target.value);$('#sleep').onchange=e=>{if(sleepTimer)clearTimeout(sleepTimer);const m=Number(e.target.value);if(m)sleepTimer=setTimeout(()=>{$('#audio').pause();toast('Sleep timer paused playback.')},m*60000)};
 $('#audio').ontimeupdate=()=>{if(current&&current.kind==='audio'){clearTimeout(saveTick);saveTick=setTimeout(saveProgress,5000)}};$('#audio').onended=()=>{if(current){current.progress=1;current.status='finished';db.updateBook(current).then(render)}};
 function scheduleProgressSave(){
@@ -148,4 +200,4 @@ $('#backupPicker').addEventListener('change',e=>{const file=e.target.files?.[0];
 $('#clrLog').onclick=()=>localStorage.removeItem(LOGK);$('#fab').onclick=()=>$('#picker').click();$('#picker').onchange=e=>{const f=[...e.target.files];e.target.value='';if(f.length)importFiles(f)};let st;$('#q').oninput=()=>{clearTimeout(st);st=setTimeout(render,120)};$('#sort').onchange=()=>{render();db.setSetting('sort',$('#sort').value).catch(e=>logErr(e.message))};
 addEventListener('pagehide',()=>{clearTimeout(saveTick);if(current)saveProgress()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&current){clearTimeout(saveTick);saveProgress()}});
-(async()=>{try{const f=await db.getSetting('filter','all'),s=await db.getSetting('sort','added');if(FILTERS.some(x=>x[0]===f))filter=f;if([...$('#sort').options].some(o=>o.value===s))$('#sort').value=s;fontSize=await db.getSetting('fontSize',19);readerTheme=await db.getSetting('readerTheme','dark')}catch(e){logErr(e.message)}renderFilters();try{books=await db.allBooks();if(navigator.storage?.persist)navigator.storage.persist()}catch(e){logErr(e.message);toast('Storage unavailable: '+e.message)}render();if(window.isSecureContext&&'serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(e=>logErr('SW: '+e.message))})();
+(async()=>{try{const f=await db.getSetting('filter','all'),s=await db.getSetting('sort','added');if(FILTERS.some(x=>x[0]===f))filter=f;if([...$('#sort').options].some(o=>o.value===s))$('#sort').value=s;fontSize=await db.getSetting('fontSize',19);readerTheme=await db.getSetting('readerTheme','dark');readerFont=await db.getSetting('readerFont','serif');readerLh=await db.getSetting('readerLh',1.7);readerMargin=await db.getSetting('readerMargin',22);cleanPrefs()}catch(e){logErr(e.message)}renderFilters();try{books=await db.allBooks();if(navigator.storage?.persist)navigator.storage.persist()}catch(e){logErr(e.message);toast('Storage unavailable: '+e.message)}render();if(window.isSecureContext&&'serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(e=>logErr('SW: '+e.message))})();
