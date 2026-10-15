@@ -430,3 +430,15 @@ header,.tools{background:#000!important}
  border:0!important;background:transparent!important;padding:3px!important;border-radius:6px!important;
 }
 #dlgReader .reader-title{font-size:.9rem!important;font-weight:400!important}
+
+/* v2.2: enforce hidden chrome state even against legacy layout rules */
+#dlgReader.reader-dialog.chrome-hidden .reader-head,
+#dlgReader.reader-dialog.chrome-hidden #readerTools,
+#dlgReader.reader-dialog.chrome-hidden #appearancePanel{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+#dlgReader.reader-dialog.chrome-hidden #readerContent{
+  padding-top:20px!important;
+}
