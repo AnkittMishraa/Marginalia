@@ -324,3 +324,49 @@ header,.tools{background:#000!important}
 .stats-recent-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--dv);font-size:.9rem}
 .stats-recent-row span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #btnStats{font-size:1rem}
+
+/* v1.9 reader viewport and compact controls */
+#dlgReader.reader-dialog{
+  top:0!important;
+  bottom:0!important;
+  height:100dvh!important;
+  max-height:100dvh!important;
+  padding-bottom:0!important;
+}
+#dlgReader .reader-head{
+  min-height:0!important;
+  padding:8px 12px!important;
+  gap:8px!important;
+}
+#dlgReader .reader-head .back-arrow{
+  width:38px!important;
+  min-width:38px!important;
+  height:38px!important;
+  min-height:38px!important;
+  font-size:1.25rem!important;
+}
+#dlgReader .reader-head #readerMore{
+  min-width:40px!important;
+  width:40px!important;
+  height:40px!important;
+  min-height:40px!important;
+  padding:6px!important;
+}
+#dlgReader .reader-tools{
+  gap:6px!important;
+  padding:6px 10px!important;
+}
+#dlgReader .reader-tools button,
+#dlgReader .reader-tools select{
+  min-height:36px!important;
+  padding:6px 10px!important;
+  border-radius:9px!important;
+  font-size:.88rem!important;
+}
+#dlgReader .reader-content{
+  flex:1 1 0!important;
+  min-height:0!important;
+  height:0!important;
+  padding:16px 20px 28px!important;
+  overflow-y:auto!important;
+}
