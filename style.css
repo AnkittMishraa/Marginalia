@@ -529,3 +529,25 @@ header,.tools{background:#000!important}
 /* TXT body must flow in the page, not inside the error-log <pre> box (global pre{max-height:30vh;overflow:auto}) */
 #dlgReader .reader-content pre.txt-body{max-height:none!important;overflow:visible!important;background:none!important;padding:0!important;border-radius:0!important;font-size:inherit!important}
 #aaPop [hidden],#paneTheme[hidden],#paneText[hidden]{display:none!important}
+
+
+/* v2.5: align library header actions, repair settings gear, and add restrained motion */
+header{justify-content:flex-start!important;gap:8px!important}
+header h1{flex:1 1 auto!important;min-width:0!important;margin-right:auto!important}
+header .icon{flex:0 0 44px!important;width:44px!important;height:44px!important;display:grid!important;place-items:center!important;padding:0!important;color:#bdbdbd!important}
+header .icon + .icon{margin-left:0!important}
+header .icon svg{display:block!important;width:25px!important;height:25px!important;stroke:currentColor!important;stroke-width:1.9!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+header .icon:active{background:#171717!important;transform:scale(.94)}
+
+@keyframes marginalia-pop-in{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes marginalia-backdrop-in{from{opacity:0}to{opacity:1}}
+@keyframes marginalia-toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+dialog:not(.reader-dialog)[open]{animation:marginalia-pop-in .19s cubic-bezier(.2,.75,.25,1) both}
+dialog:not(.reader-dialog)[open]::backdrop{animation:marginalia-backdrop-in .16s ease-out both}
+#dlgToc[open]{animation:marginalia-pop-in .22s cubic-bezier(.2,.75,.25,1) both}
+#dlgReader .rpop:not([hidden]),.book-menu:not([hidden]){animation:marginalia-pop-in .16s cubic-bezier(.2,.75,.25,1) both;transform-origin:top right}
+#toast:not([hidden]){animation:marginalia-toast-in .18s ease-out both}
+@media(prefers-reduced-motion:reduce){
+ dialog:not(.reader-dialog)[open],dialog:not(.reader-dialog)[open]::backdrop,#dlgReader .rpop:not([hidden]),.book-menu:not([hidden]),#toast:not([hidden]){animation:none!important}
+ header .icon:active{transform:none}
+}
