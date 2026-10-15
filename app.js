@@ -82,7 +82,7 @@ async function saveProgress(){
   if(idx>=0)books[idx]=current;
  }catch(e){logErr('progress: '+e.message)}
 }
-async function openBook(b){current=b;const rec=await db.getFile(b.id);if(!rec||!rec.blob){toast('The stored file is missing. Re-import the original file.');return}readerBlob=rec.blob;$('#readerTitle').textContent=b.title;$('#readerContent').replaceChildren();$('#readerTools').hidden=true;$('#appearancePanel').hidden=true;$('#readerMore').setAttribute('aria-expanded','false');$('#audioPanel').hidden=true;$('#readerContent').className='reader-content';readerOpen();
+async function openBook(b){current=b;const rec=await db.getFile(b.id);if(!rec||!rec.blob){toast('The stored file is missing. Re-import the original file.');return}readerBlob=rec.blob;$('#readerTitle').textContent=b.title;$('#readerContent').replaceChildren();$('#readerTools').hidden=true;$('#appearancePanel').hidden=true;$('#readerMore').setAttribute('aria-expanded','false');$('#audioPanel').hidden=true;$('#readerContent').className='reader-content';$('#dlgReader').classList.add('chrome-hidden');readerOpen();
  try{
   if(b.kind==='audio'){openAudio(b,rec.blob);return}
   if(b.format==='txt'){const text=await rec.blob.text();const pre=document.createElement('pre');pre.className='txt-body';pre.textContent=text;$('#readerContent').replaceChildren(pre);applyReaderStyle();requestAnimationFrame(()=>{$('#readerContent').scrollTop=Number(b.position)||0});return}
@@ -115,6 +115,12 @@ const readingSurface=$('#readerContent');
 readingSurface.addEventListener('scroll',scheduleProgressSave,{passive:true});
 readingSurface.addEventListener('touchend',scheduleProgressSave,{passive:true});
 readingSurface.addEventListener('pointerup',scheduleProgressSave,{passive:true});
+readingSurface.addEventListener('click',e=>{
+ if(window.getSelection&&String(window.getSelection()))return;
+ if(e.target.closest('a,button,input,select,textarea,iframe,video,audio'))return;
+ $('#dlgReader').classList.toggle('chrome-hidden');
+});
+
 
 const STATS_KEY='readingStats';
 let stats={readSeconds:0,listenSeconds:0,lastByBook:{}},statsLoaded=false,statsTick=null;
